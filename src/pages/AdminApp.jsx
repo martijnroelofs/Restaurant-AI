@@ -850,28 +850,26 @@ function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments,
             <div style={{ fontSize:11, color:C.inkMuted, alignSelf:'center' }}>Kopieer van:</div>
             {DAYS_FULL.map((d, di) => di !== dayTab && (
               <button key={di} onClick={async () => {
-                // Get slots from source day
-                const sourceSlots = templateSlots.filter(s => s.is_recurring && s.day_of_week === di)
+                // Get slots from source day using localSlots
+                const sourceSlots = localSlots.filter(s => s.is_recurring && s.day_of_week === di)
                 if (!sourceSlots.length) { show(`Geen slots op ${d}`); return }
-                // Delete existing slots for target day
+                // Delete existing slots for target day from DB
                 const targetSlots = localSlots.filter(s => s.is_recurring && s.day_of_week === dayTab)
-                for (const s of targetSlots) {
-                  await supabase.from('template_slots').delete().eq('id', s.id)
-                }
-                // Insert copies for target day
-                const newSlots = []
-                for (const s of sourceSlots) {
-                  const { data } = await supabase.from('template_slots').insert({
-                    org_id: orgId, day_of_week: dayTab,
-                    dept: s.dept, shift_name: s.shift_name,
-                    count: s.count, is_recurring: true,
-                  }).select().single()
-                  if (data) newSlots.push(data)
-                }
-                // Update local state
+                await Promise.all(targetSlots.map(s =>
+                  supabase.from('template_slots').delete().eq('id', s.id)
+                ))
+                // Insert copies for target day in DB
+                const inserts = sourceSlots.map(s => ({
+                  org_id: orgId, day_of_week: dayTab,
+                  dept: s.dept, shift_name: s.shift_name,
+                  count: s.count, is_recurring: true,
+                }))
+                const { data: newSlots } = await supabase
+                  .from('template_slots').insert(inserts).select()
+                // Update local state with DB-returned rows (includes real IDs)
                 setLocalSlots(ls => [
                   ...ls.filter(s => !(s.is_recurring && s.day_of_week === dayTab)),
-                  ...newSlots
+                  ...(newSlots || [])
                 ])
                 show(`✓ ${DAYS_FULL[dayTab]} gekopieerd van ${d}`)
               }} style={{ ...btn(), background:C.surfaceAlt, color:C.inkMid,
