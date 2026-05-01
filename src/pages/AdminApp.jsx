@@ -656,7 +656,7 @@ function RoosterTab({ allStaff, currentSchedule, currentWeek, shiftTemplates, pe
                                 boxShadow:'0 8px 30px rgba(0,0,0,.12)', zIndex:20, minWidth:150 }}>
                                 <div onClick={() => { onCellChange(s.id, di, null); setEditCell(null) }}
                                   style={{ padding:'6px 10px', borderRadius:7, cursor:'pointer', color:C.inkMuted, fontSize:12, fontWeight:600 }}>— Vrij</div>
-                                {Object.keys(shiftTemplates).map(n => {
+                                {Object.keys(shiftTemplates).sort((a,b) => { const ta = shiftTemplates[a]?.start_time||''; const tb = shiftTemplates[b]?.start_time||''; return ta.localeCompare(tb); }).map(n => {
                                   const t = shiftTemplates[n]
                                   return (
                                     <div key={n} onClick={() => { onCellChange(s.id, di, n); setEditCell(null) }}
@@ -788,7 +788,7 @@ function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments,
   async function addSlot(dk) {
     const newSlot = {
       org_id: orgId, day_of_week: dayTab, dept: dk,
-      shift_name: Object.keys(shiftTemplates)[0] || 'Ochtend',
+      shift_name: (Object.keys(shiftTemplates).sort((a,b) => { const ta = shiftTemplates[a]?.start_time||''; const tb = shiftTemplates[b]?.start_time||''; return ta.localeCompare(tb); }))[0] || 'Ochtend',
       count: 1, is_recurring: true,
     }
     const { data } = await supabase.from('template_slots').insert(newSlot).select().single()
@@ -903,7 +903,7 @@ function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments,
                   <select value={slot.shift_name}
                     onChange={e => updateSlot(slot.id, { shift_name: e.target.value })}
                     style={{ flex:2, padding:'7px 10px', borderRadius:8, border:`1px solid ${C.border}`, fontSize:13, color:C.ink }}>
-                    {Object.keys(shiftTemplates).map(n => {
+                    {Object.keys(shiftTemplates).sort((a,b) => { const ta = shiftTemplates[a]?.start_time||''; const tb = shiftTemplates[b]?.start_time||''; return ta.localeCompare(tb); }).map(n => {
                       const t = shiftTemplates[n]
                       return <option key={n} value={n}>{n} ({t.start_time}–{t.end_time})</option>
                     })}
@@ -1500,7 +1500,7 @@ function InstellingenTab({ settings, orgId, shiftTemplates, onReload, show }) {
           <button onClick={() => { setEditTmpl({ _isNew:true, name:'', start_time:'09:00', end_time:'17:00', break_minutes:30 }); setTmplModal(true) }}
             style={{ ...btn(), background:C.ink, color:C.white, padding:'7px 14px', fontSize:12, borderRadius:9 }}>＋ Nieuwe dienst</button>
         </div>
-        {Object.values(shiftTemplates).map(t => (
+        {Object.values(shiftTemplates).sort((a,b) => (a.start_time||'').localeCompare(b.start_time||'')).map(t => (
           <div key={t.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom:`1px solid #EEE9E0` }}>
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:700, fontSize:14, color:C.ink }}>{t.name}</div>
