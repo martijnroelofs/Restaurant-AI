@@ -1110,11 +1110,22 @@ function PersoneelTab({ allStaff, capacities, orgId, onReload, show, shiftTempla
                             <span style={{ fontWeight:800, color:score>=8?C.jade:score>=5?dept?.color:C.crimson }}>{score}/10</span>
                           </div>
                           <input type="range" min={1} max={10} value={score}
-                            onChange={async e => {
+                            onChange={e => {
+                              setCapacities(c => ({
+                                ...c,
+                                [s.id]: { ...(c[s.id]||{}), [dk]: +e.target.value }
+                              }))
+                            }}
+                            onMouseUp={async e => {
                               await supabase.from('capacity_scores').upsert({
                                 staff_id:s.id, dept:dk, score:+e.target.value
                               }, { onConflict:'staff_id,dept' })
-                              onReload()
+                            }}
+                            onTouchEnd={async () => {
+                              const val = capacities[s.id]?.[dk] ?? 5
+                              await supabase.from('capacity_scores').upsert({
+                                staff_id:s.id, dept:dk, score:val
+                              }, { onConflict:'staff_id,dept' })
                             }}
                             style={{ width:'100%', accentColor:dept?.color, cursor:'pointer', height:6 }}/>
                         </div>
@@ -1472,3 +1483,4 @@ function InstellingenTab({ settings, orgId, shiftTemplates, onReload, show }) {
     </div>
   )
 }
+
