@@ -139,26 +139,30 @@ export const btn = (overrides={}) => ({
 
 // Week utilities
 export function getWeekDates(mondayDate) {
-  const d = new Date(mondayDate)
+  // Use UTC to avoid timezone offset issues
+  const [y, m, dd] = mondayDate.split('-').map(Number)
   return Array.from({ length:7 }, (_, i) => {
-    const day = new Date(d)
-    day.setDate(d.getDate() + i)
-    return day.toISOString().split('T')[0]
+    const d = new Date(Date.UTC(y, m - 1, dd + i))
+    return d.toISOString().split('T')[0]
   })
 }
 
 export function getMondayOfWeek(date = new Date()) {
+  // Use UTC to avoid timezone issues
   const d = new Date(date)
-  const day = d.getDay()
+  const day = d.getUTCDay()
   const diff = (day === 0 ? -6 : 1 - day)
-  d.setDate(d.getDate() + diff)
-  return d.toISOString().split('T')[0]
+  const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + diff))
+  return mon.toISOString().split('T')[0]
 }
 
 export function formatDate(dateStr) {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('nl-NL', { day:'numeric', month:'short' })
+  // Use UTC to avoid timezone issues causing wrong date display
+  const [y, m, dd] = dateStr.split('-').map(Number)
+  const d = new Date(Date.UTC(y, m - 1, dd))
+  return d.toLocaleDateString('nl-NL', { day:'numeric', month:'short', timeZone:'UTC' })
 }
 
 export const DAYS = ['Ma','Di','Wo','Do','Vr','Za','Zo']
 export const DAYS_FULL = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag']
+
