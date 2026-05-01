@@ -48,6 +48,7 @@ export default function AdminApp() {
   const [overtimeLog, setOvertimeLog] = useState({})
   const [settings, setSettings] = useState({})
   const [generating, setGenerating] = useState(false)
+  const [recurringPeaks, setRecurringPeaks] = useState({ 4:4, 5:7, 6:2 }) // Fri eve, Sat all, Sun midday
 
   const weeks = useMemo(() => getWeeks(), [])
   const currentWeek = weeks[weekIdx]
@@ -186,6 +187,7 @@ export default function AdminApp() {
         shiftTemplates,
         templateSlots,
         peakMoments,
+        recurringPeaks,
         holidays,
         availabilityPatterns: availPatterns,
         availabilityOverrides: availOverrides,
@@ -474,6 +476,7 @@ export default function AdminApp() {
           <TemplateTab
             templateSlots={templateSlots} shiftTemplates={shiftTemplates}
             peakMoments={peakMoments} holidays={holidays}
+            recurringPeaks={recurringPeaks} setRecurringPeaks={setRecurringPeaks}
             orgId={orgId} onReload={loadAll} show={show}
           />
         )}
@@ -763,10 +766,11 @@ function HistorischTab({ weeks, rosters, assignments, allStaff, shiftTemplates, 
   )
 }
 
-function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments, holidays, orgId, onReload, show }) {
+function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments, holidays, recurringPeaks, setRecurringPeaks, orgId, onReload, show }) {
   const [dayTab, setDayTab] = useState(0)
   const [newPeak, setNewPeak] = useState({ date:'', label:'', slots:7 })
   const [newHoliday, setNewHoliday] = useState({ date:'', name:'', is_closed:true })
+  // recurringPeaks comes from AdminApp props
   const [localSlots, setLocalSlots] = useState(initialSlots)
 
   // Keep localSlots in sync when parent reloads (e.g. first load)
@@ -891,7 +895,44 @@ function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments,
       {/* Peak moments */}
       <Card style={{ padding:20 }}>
         <div style={{ fontWeight:800, fontSize:15, marginBottom:4 }}>🔥 Piek momenten</div>
-        <div style={{ color:C.inkMuted, fontSize:13, marginBottom:16 }}>Specifieke datums waarop extra personeel wordt ingeroosterd</div>
+        <div style={{ color:C.inkMuted, fontSize:13, marginBottom:16 }}>Vaste weekdag-pieken gelden elke week. Datum-specifieke pieken overschrijven voor die dag.</div>
+
+        {/* Vaste weekdag pieken */}
+        <div style={{ fontWeight:700, fontSize:13, color:C.inkMid, marginBottom:10 }}>VASTE WEEKDAG-PIEKEN</div>
+        {[
+          { day:'Vrijdag',  di:4, label:'Avond (17:00–sluit)', slots:4 },
+          { day:'Zaterdag', di:5, label:'Hele dag',            slots:7 },
+          { day:'Zondag',   di:6, label:'Middag (12:00–16:00)',slots:2 },
+        ].map(({ day, di, label, slots }) => {
+          const active = recurringPeaks[di] !== undefined
+          return (
+            <div key={di} style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+              padding:'10px 12px', background:active ? C.crimsonSoft : C.surfaceAlt,
+              borderRadius:10, marginBottom:6, border:`1px solid ${active ? C.crimson+'44' : C.border}` }}>
+              <div>
+                <div style={{ fontWeight:700, fontSize:13, color:active ? C.crimson : C.ink }}>
+                  {active ? '🔥' : '○'} {day}
+                </div>
+                <div style={{ color:C.inkMuted, fontSize:11 }}>{label}</div>
+              </div>
+              <button onClick={() => setRecurringPeaks(rp => {
+                const n = { ...rp }
+                if (active) delete n[di]
+                else n[di] = slots
+                return n
+              })} style={{ ...btn(),
+                background: active ? C.crimson : C.jade+'18',
+                color: active ? C.white : C.jade,
+                border: `1px solid ${active ? C.crimson : C.jade+'44'}`,
+                padding:'6px 14px', fontSize:12, borderRadius:9 }}>
+                {active ? 'Uitzetten' : 'Aanzetten'}
+              </button>
+            </div>
+          )
+        })}
+
+        {/* Datum-specifieke pieken */}
+        <div style={{ fontWeight:700, fontSize:13, color:C.inkMid, marginBottom:10, marginTop:16 }}>DATUM-SPECIFIEKE PIEKEN</div>
         <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
           <input type="date" value={newPeak.date} onChange={e => setNewPeak(p => ({...p, date:e.target.value}))}
             style={{ flex:1, padding:'9px 12px', borderRadius:10, border:`1px solid ${C.border}`, fontSize:13, minWidth:130 }}/>
@@ -899,9 +940,9 @@ function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments,
             placeholder="Omschrijving (bijv. Oud & Nieuw)"
             style={{ flex:2, padding:'9px 12px', borderRadius:10, border:`1px solid ${C.border}`, fontSize:13, minWidth:150 }}/>
           <button onClick={addPeak} style={{ ...btn(), background:C.crimson+'18', color:C.crimson,
-            border:`1px solid ${C.crimson}44`, padding:'9px 14px', fontSize:13, borderRadius:10 }}>＋ Toevoegen</button>
+            border:`1px solid ${C.crimson}44`, padding:'9px 14px', fontSize:13, borderRadius:10 }}>＋ Datum toevoegen</button>
         </div>
-        {peakMoments.length === 0 && <div style={{ color:C.inkMuted, fontSize:12, fontStyle:'italic' }}>Nog geen piek momenten</div>}
+        {peakMoments.length === 0 && <div style={{ color:C.inkMuted, fontSize:12, fontStyle:'italic' }}>Nog geen datum-specifieke pieken</div>}
         {peakMoments.map(p => (
           <div key={p.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
             padding:'9px 12px', background:C.surfaceAlt, borderRadius:10, marginBottom:6 }}>
