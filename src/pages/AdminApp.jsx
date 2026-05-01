@@ -763,28 +763,44 @@ function HistorischTab({ weeks, rosters, assignments, allStaff, shiftTemplates, 
   )
 }
 
-function TemplateTab({ templateSlots, shiftTemplates, peakMoments, holidays, orgId, onReload, show }) {
+function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments, holidays, orgId, onReload, show }) {
   const [dayTab, setDayTab] = useState(0)
   const [newPeak, setNewPeak] = useState({ date:'', label:'', slots:7 })
   const [newHoliday, setNewHoliday] = useState({ date:'', name:'', is_closed:true })
+  const [localSlots, setLocalSlots] = useState(initialSlots)
+
+  // Keep localSlots in sync when parent reloads (e.g. first load)
+  const prevInitial = React.useRef(initialSlots)
+  React.useEffect(() => {
+    if (prevInitial.current !== initialSlots) {
+      prevInitial.current = initialSlots
+      setLocalSlots(initialSlots)
+    }
+  }, [initialSlots])
+
+  // Use localSlots instead of templateSlots throughout
+  const templateSlots = localSlots
 
   async function addSlot(dk) {
-    await supabase.from('template_slots').insert({
+    const newSlot = {
       org_id: orgId, day_of_week: dayTab, dept: dk,
       shift_name: Object.keys(shiftTemplates)[0] || 'Ochtend',
       count: 1, is_recurring: true,
-    })
-    onReload(); show('✓ Slot toegevoegd')
+    }
+    const { data } = await supabase.from('template_slots').insert(newSlot).select().single()
+    if (data) setLocalSlots(ls => [...ls, data])
+    show('✓ Slot toegevoegd')
   }
 
   async function updateSlot(id, changes) {
     await supabase.from('template_slots').update(changes).eq('id', id)
-    onReload()
-  }
+    setLocalSlots(ls => ls.map(s => s.id === id ? { ...s, ...changes } : s))
+    }
 
   async function removeSlot(id) {
     await supabase.from('template_slots').delete().eq('id', id)
-    onReload(); show('✓ Slot verwijderd')
+    setLocalSlots(ls => ls.filter(s => s.id !== id))
+    show('✓ Slot verwijderd')
   }
 
   async function addPeak() {
