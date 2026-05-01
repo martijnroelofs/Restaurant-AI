@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { generateSchedule, calcFinancials } from '../lib/scheduler'
@@ -774,8 +774,8 @@ function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments,
   const [localSlots, setLocalSlots] = useState(initialSlots)
 
   // Keep localSlots in sync when parent reloads (e.g. first load)
-  const prevInitial = React.useRef(initialSlots)
-  React.useEffect(() => {
+  const prevInitial = useRef(initialSlots)
+  useEffect(() => {
     if (prevInitial.current !== initialSlots) {
       prevInitial.current = initialSlots
       setLocalSlots(initialSlots)
