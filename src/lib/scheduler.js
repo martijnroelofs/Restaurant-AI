@@ -56,7 +56,8 @@ export function generateSchedule({
   staff,
   shiftTemplates,      // { name: { start_time, end_time, break_minutes } }
   templateSlots,       // [{ day_of_week, dept, shift_name, count, is_recurring, specific_date }]
-  peakMoments,         // [{ date, slots }]
+  peakMoments,         // [{ date, slots }] — date-specific peaks
+  recurringPeaks = { 4:4, 5:7, 6:2 }, // { dayIndex: slotBitmask } — weekly recurring peaks
   holidays,            // [{ date, is_closed, holiday_slots: [{dept, shift_name, count}] }]
   availabilityPatterns, // { staffId: { dayOfWeek: slots_bitmask } }
   availabilityOverrides, // { staffId: { date: slots_bitmask } }
@@ -98,9 +99,10 @@ export function generateSchedule({
     const holiday = (holidays || []).find(h => h.date === date)
     if (holiday?.is_closed) return // skip day entirely
 
-    // Check peak
+    // Check peak — date-specific OR recurring weekday
     const peak = (peakMoments || []).find(p => p.date === date)
-    const isPeak = !!peak
+    const recurringPeak = recurringPeaks[dayOfWeek]
+    const isPeak = !!(peak || recurringPeak)
 
     // Get slots for this day
     let daySlots
