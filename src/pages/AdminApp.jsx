@@ -983,6 +983,7 @@ function PersoneelTab({ allStaff, capacities, orgId, onReload, show, shiftTempla
   const [modal, setModal] = useState(false)
   const [editId, setEditId] = useState(null)
   const [capId, setCapId] = useState(null)
+  const [localScores, setLocalScores] = useState({})
   const emptyForm = { name:'', email:'', password:'', role:'', color:'#1D4ED8',
     contract_type:'vast', contract_hours:20, min_hours:8, max_hours:32, hourly_rate:12, depts:[] }
   const [form, setForm] = useState(emptyForm)
@@ -1102,7 +1103,7 @@ function PersoneelTab({ allStaff, capacities, orgId, onReload, show, shiftTempla
                     <div style={{ fontWeight:700, fontSize:13, marginBottom:10, color:C.inkMid }}>Capaciteitsscores (1–10)</div>
                     {(s.depts || []).map(dk => {
                       const dept = DEPTS[dk]
-                      const score = capacities[s.id]?.[dk] ?? 5
+                      const score = (localScores[s.id]?.[dk] !== undefined ? localScores[s.id]?.[dk] : capacities[s.id]?.[dk]) ?? 5
                       return (
                         <div key={dk} style={{ marginBottom:10 }}>
                           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
@@ -1111,21 +1112,31 @@ function PersoneelTab({ allStaff, capacities, orgId, onReload, show, shiftTempla
                           </div>
                           <input type="range" min={1} max={10} value={score}
                             onChange={e => {
-                              setCapacities(c => ({
-                                ...c,
-                                [s.id]: { ...(c[s.id]||{}), [dk]: +e.target.value }
+                              // Update local display only - no re-render of parent
+                              setLocalScores(ls => ({
+                                ...ls,
+                                [s.id]: { ...(ls[s.id]||{}), [dk]: +e.target.value }
                               }))
                             }}
                             onMouseUp={async e => {
-                              await supabase.from('capacity_scores').upsert({
-                                staff_id:s.id, dept:dk, score:+e.target.value
-                              }, { onConflict:'staff_id,dept' })
-                            }}
-                            onTouchEnd={async () => {
-                              const val = capacities[s.id]?.[dk] ?? 5
+                              const val = +e.target.value
+                              // Update local capacities display
+                              setLocalScores(ls => ({
+                                ...ls,
+                                [s.id]: { ...(ls[s.id]||{}), [dk]: val }
+                              }))
+                              // Save to DB without triggering full reload
                               await supabase.from('capacity_scores').upsert({
                                 staff_id:s.id, dept:dk, score:val
                               }, { onConflict:'staff_id,dept' })
+                              show('✓ Score opgeslagen')
+                            }}
+                            onTouchEnd={async e => {
+                              const val = localScores[s.id]?.[dk] ?? capacities[s.id]?.[dk] ?? 5
+                              await supabase.from('capacity_scores').upsert({
+                                staff_id:s.id, dept:dk, score:val
+                              }, { onConflict:'staff_id,dept' })
+                              show('✓ Score opgeslagen')
                             }}
                             style={{ width:'100%', accentColor:dept?.color, cursor:'pointer', height:6 }}/>
                         </div>
