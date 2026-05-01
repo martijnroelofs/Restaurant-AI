@@ -844,7 +844,43 @@ function TemplateTab({ templateSlots: initialSlots, shiftTemplates, peakMoments,
 
       {/* Slot editor */}
       <Card style={{ padding:20 }}>
-        <div style={{ fontWeight:800, fontSize:15, marginBottom:16 }}>{DAYS_FULL[dayTab]}</div>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8 }}>
+          <div style={{ fontWeight:800, fontSize:15 }}>{DAYS_FULL[dayTab]}</div>
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            <div style={{ fontSize:11, color:C.inkMuted, alignSelf:'center' }}>Kopieer van:</div>
+            {DAYS_FULL.map((d, di) => di !== dayTab && (
+              <button key={di} onClick={async () => {
+                // Get slots from source day
+                const sourceSlots = templateSlots.filter(s => s.is_recurring && s.day_of_week === di)
+                if (!sourceSlots.length) { show(`Geen slots op ${d}`); return }
+                // Delete existing slots for target day
+                const targetSlots = localSlots.filter(s => s.is_recurring && s.day_of_week === dayTab)
+                for (const s of targetSlots) {
+                  await supabase.from('template_slots').delete().eq('id', s.id)
+                }
+                // Insert copies for target day
+                const newSlots = []
+                for (const s of sourceSlots) {
+                  const { data } = await supabase.from('template_slots').insert({
+                    org_id: orgId, day_of_week: dayTab,
+                    dept: s.dept, shift_name: s.shift_name,
+                    count: s.count, is_recurring: true,
+                  }).select().single()
+                  if (data) newSlots.push(data)
+                }
+                // Update local state
+                setLocalSlots(ls => [
+                  ...ls.filter(s => !(s.is_recurring && s.day_of_week === dayTab)),
+                  ...newSlots
+                ])
+                show(`✓ ${DAYS_FULL[dayTab]} gekopieerd van ${d}`)
+              }} style={{ ...btn(), background:C.surfaceAlt, color:C.inkMid,
+                border:`1px solid ${C.border}`, padding:'5px 10px', fontSize:11, borderRadius:7 }}>
+                {DAYS[di]}
+              </button>
+            ))}
+          </div>
+        </div>
         {DEPT_KEYS.map(dk => {
           const dept = DEPTS[dk]
           const slots = daySlots.filter(s => s.dept === dk)
